@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Krebs Cycle Explorer | Tricarboxylic Acid (TCA) Cycle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        bio: {
+                            bg: '#0B1120',
+                            card: '#131C31',
+                            border: '#1E293B',
+                            teal: '#14B8A6',
+                            emerald: '#10B981',
+                            amber: '#F59E0B',
+                            rose: '#F43F5E',
+                            purple: '#A855F7',
+                            cyan: '#06B6D4'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0B1120;
+            color: #F8FAFC;
+            overflow-x: hidden;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B1120;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* SVG Path Animation */
+        .cycle-ring-dashed {
+            stroke-dasharray: 8 8;
+            animation: dashRotate 40s linear infinite;
+        }
+        @keyframes dashRotate {
+            from { stroke-dashoffset: 300; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .node-pulse {
+            animation: pulseGlow 2.2s infinite ease-in-out;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 6px rgba(20, 184, 166, 0.7)); }
+            50% { filter: drop-shadow(0 0 16px rgba(20, 184, 166, 1)); }
+        }
+
+        .byproduct-badge {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-panel {
+            background: rgba(19, 28, 49, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .carbon-sphere {
+            background: radial-gradient(circle at 30% 30%, #38bdf8, #0284c7 60%, #0369a1 100%);
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.45);
+        }
+        .coa-sphere {
+            background: radial-gradient(circle at 30% 30%, #fbbf24, #d97706 60%, #92400e 100%);
+            box-shadow: 0 2px 8px rgba(217, 119, 6, 0.45);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-teal-500 selection:text-white">
+
+    <header class="sticky top-0 z-30 glass-panel border-b border-slate-800/80 px-4 py-3 sm:px-6">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <!-- Brand & Title -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                    <svg class="w-6 h-6 text-slate-950" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Krebs Cycle Explorer</h1>
+                        <span class="text-xs font-mono uppercase px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">Mitochondrial Matrix</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Interactive Citric Acid / Tricarboxylic Acid (TCA) Cycle Simulator</p>
+                </div>
+            </div>
+
+            <!-- Live Energy & Stoichiometry Scoreboard -->
+            <div class="w-full lg:w-auto flex flex-wrap items-center justify-between lg:justify-end gap-2 sm:gap-3">
+                <!-- Turn Multiplier Toggle -->
+                <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs">
+                    <button id="btn-1x" onclick="setMultiplier(1)" class="px-2.5 py-1.5 rounded-lg font-medium transition-all bg-teal-500 text-slate-950 shadow">
+                        1 Acetyl-CoA (1 Turn)
+                    </button>
+                    <button id="btn-2x" onclick="setMultiplier(2)" class="px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white">
+                        1 Glucose (2 Turns)
+                    </button>
+                </div>
+
+                <!-- Counters -->
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <div class="px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center gap-1.5" title="Reduced Nicotinamide Adenine Dinucleotide">
+                        <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                        <span class="text-xs text-slate-300 font-medium">NADH:</span>
+                        <span id="score-nadh" class="text-xs sm:text-sm font-mono font-bold text-purple-300">0/3</span>
+                    </div>
+                    <div class="px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5" title="Reduced Flavin Adenine Dinucleotide">
+                        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                        <span class="text-xs text-slate-300 font-medium">FADH₂:</span>
+                        <span id="score-fadh2" class="text-xs sm:text-sm font-mono font-bold text-amber-300">0/1</span>
+                    </div>
+                    <div class="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-1.5" title="Adenosine / Guanosine Triphosphate">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span class="text-xs text-slate-300 font-medium">ATP/GTP:</span>
+                        <span id="score-atp" class="text-xs sm:text-sm font-mono font-bold text-emerald-300">0/1</span>
+                    </div>
+                    <div class="px-2.5 py-1 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-1.5" title="Carbon Dioxide Released">
+                        <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                        <span class="text-xs text-slate-300 font-medium">CO₂:</span>
+                        <span id="score-co2" class="text-xs sm:text-sm font-mono font-bold text-rose-300">0/2</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- LEFT COLUMN: Interactive SVG Cycle Diagram (7 cols on desktop) -->
+        <section class="lg:col-span-7 glass-panel rounded-2xl p-4 sm:p-6 flex flex-col items-center relative overflow-hidden shadow-2xl">
+            
+            <!-- Top Controls Bar inside Canvas Card -->
+            <div class="w-full flex flex-wrap items-center justify-between gap-2 mb-2 z-10">
+                <div class="flex items-center gap-2">
+                    <button id="play-pause-btn" onclick="togglePlay()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-xs sm:text-sm transition shadow-lg shadow-teal-500/20">
+                        <svg id="play-icon" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <span id="play-text">Auto-Play Cycle</span>
+                    </button>
+                    <button onclick="prevStep()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition" title="Previous Step (Left Arrow)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <button onclick="nextStep()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition" title="Next Step (Right Arrow)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Speed & Mode Switch -->
+                <div class="flex items-center gap-2">
+                    <label for="speed-select" class="text-xs text-slate-400 hidden sm:inline">Speed:</label>
+                    <select id="speed-select" onchange="updateSpeed(this.value)" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-teal-500">
+                        <option value="3800">Slow (Study)</option>
+                        <option value="2400" selected>Normal (1x)</option>
+                        <option value="1200">Fast (2x)</option>
+                    </select>
+                    <button id="quiz-mode-btn" onclick="toggleQuizMode()" class="px-3 py-1.5 rounded-xl text-xs font-semibold border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        <span>Quiz Mode</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Interactive SVG Wheel Container -->
+            <div class="w-full max-w-[580px] aspect-square relative flex items-center justify-center my-1">
+                <svg id="krebs-svg" viewBox="0 0 700 700" class="w-full h-full select-none">
+                    <defs>
+                        <!-- Gradients -->
+                        <radialGradient id="matrixGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#14B8A6" stop-opacity="0.12"/>
+                            <stop offset="70%" stop-color="#0F172A" stop-opacity="0.05"/>
+                            <stop offset="100%" stop-color="#0B1120" stop-opacity="0"/>
+                        </radialGradient>
+                        <linearGradient id="activeArcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#2DD4BF"/>
+                            <stop offset="100%" stop-color="#10B981"/>
+                        </linearGradient>
+                        <!-- Arrowhead Markers -->
+                        <marker id="arrow-muted" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569"/>
+                        </marker>
+                        <marker id="arrow-active" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1 L 9 5 L 0 9 z" fill="#2DD4BF"/>
+                        </marker>
+                        <marker id="arrow-feeder" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+                            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38BDF8"/>
+                        </marker>
+                    </defs>
+
+                    <!-- Ambient Mitochondrial Matrix Background Circle -->
+                    <circle cx="350" cy="370" r="290" fill="url(#matrixGlow)" />
+                    <circle cx="350" cy="370" r="215" fill="none" stroke="#1E293B" stroke-width="28" />
+                    <circle cx="350" cy="370" r="215" fill="none" stroke="#334155" stroke-width="2" class="cycle-ring-dashed" />
+
+                    <!-- Acetyl-CoA Feeder Pathway at Top -->
+                    <g id="acetyl-feeder" class="cursor-pointer" onclick="selectStep(0)">
+                        <path d="M 245 48 Q 315 55 335 128" fill="none" stroke="#38BDF8" stroke-width="3" stroke-dasharray="5 3" marker-end="url(#arrow-feeder)" />
+                        <rect x="130" y="24" width="125" height="44" rx="10" fill="#0F172A" stroke="#38BDF8" stroke-width="1.8" />
+                        <text x="192" y="44" text-anchor="middle" fill="#E0F2FE" font-size="12" font-weight="700">Acetyl-CoA (2C)</text>
+                        <text x="192" y="59" text-anchor="middle" fill="#38BDF8" font-size="9.5" font-family="JetBrains Mono">Pyruvate Link</text>
+                        <!-- CoA-SH release -->
+                        <path d="M 338 118 Q 365 85 405 75" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="3 3" />
+                        <text x="438" y="78" text-anchor="middle" fill="#94A3B8" font-size="10" font-family="JetBrains Mono">+ H₂O → CoA-SH</text>
+                    </g>
+
+                    <!-- Dynamic Layer for Reaction Arcs -->
+                    <g id="svg-arcs-layer"></g>
+
+                    <!-- Dynamic Layer for Byproduct Callout Badges -->
+                    <g id="svg-byproducts-layer"></g>
+
+                    <!-- Dynamic Layer for Metabolite Nodes -->
+                    <g id="svg-nodes-layer"></g>
+
+                    <!-- Center Hub Info -->
+                    <g id="center-hub" transform="translate(350, 370)">
+                        <circle r="92" fill="#0F172A" stroke="#1E293B" stroke-width="3" />
+                        <circle r="84" fill="none" stroke="#14B8A6" stroke-opacity="0.25" stroke-width="1" />
+                        <text id="hub-step-label" y="-42" text-anchor="middle" fill="#14B8A6" font-size="11" font-family="JetBrains Mono" font-weight="600">STEP 1 OF 8</text>
+                        <text id="hub-enzyme" y="-16" text-anchor="middle" fill="#F8FAFC" font-size="13.5" font-weight="700">Citrate Synthase</text>
+                        <text id="hub-reaction-type" y="4" text-anchor="middle" fill="#94A3B8" font-size="10.5">Condensation</text>
+                        <g transform="translate(-52, 20)">
+                            <rect width="104" height="26" rx="8" fill="#1E293B" />
+                            <text id="hub-atp-equiv" x="52" y="17" text-anchor="middle" fill="#34D399" font-size="10.5" font-family="JetBrains Mono" font-weight="600">ΔG°' = -31.5 kJ/mol</text>
+                        </g>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Legend Footer inside Diagram -->
+            <div class="w-full pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>NADH</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>FADH₂</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>GTP/ATP</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>CO₂ Lost</span>
+                </div>
+                <span class="text-[11px] text-slate-500">Click any metabolite node or enzyme arc to inspect</span>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: Detailed Inspector / Quiz Panel (5 cols on desktop) -->
+        <aside class="lg:col-span-5 flex flex-col gap-5">
+            
+            <!-- STEP INSPECTOR CARD (Default View) -->
+            <div id="inspector-panel" class="glass-panel rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5">
+                
+                <!-- Step Header Badge & Navigation Dots -->
+                <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                    <div>
+                        <span id="detail-step-badge" class="inline-block text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-md bg-teal-500/15 text-teal-300 border border-teal-500/30 mb-1.5">
+                            Step 1 • Irreversible Rate-Limiting Entry
+                        </span>
+                        <h2 id="detail-title" class="text-xl sm:text-2xl font-bold text-white">Citrate Formation</h2>
+                    </div>
+                    <div id="detail-reversible-badge" class="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-mono">
+                        Irreversible
+                    </div>
+                </div>
+
+                <!-- Substrate -> Product Transformation Box -->
+                <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 flex flex-col gap-3">
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
+                        <span>SUBSTRATE(S)</span>
+                        <span id="detail-enzyme-pill" class="text-teal-400 font-semibold">Enzyme: Citrate Synthase</span>
+                        <span>PRODUCT</span>
+                    </div>
+
+                    <div class="grid grid-cols-11 items-center gap-2 my-1">
+                        <!-- Substrate Card -->
+                        <div class="col-span-5 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
+                            <div id="detail-reactant" class="text-sm font-bold text-slate-100">Oxaloacetate + Acetyl-CoA</div>
+                            <div id="detail-reactant-formula" class="text-[11px] font-mono text-slate-400 mt-0.5">C₄H₄O₅²⁻ (4C) + C₂H₃O-CoA (2C)</div>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="col-span-1 flex flex-col items-center justify-center text-teal-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </div>
+
+                        <!-- Product Card -->
+                        <div class="col-span-5 bg-teal-950/30 p-3 rounded-xl border border-teal-500/30">
+                            <div id="detail-product" class="text-sm font-bold text-teal-200">Citrate</div>
+                            <div id="detail-product-formula" class="text-[11px] font-mono text-teal-400/90 mt-0.5">C₆H₅O₇³⁻ (6 Carbons)</div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Carbon Atom Tracker -->
+                    <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Carbon Skeleton Tracker:</span>
+                        <div id="carbon-tracker-balls" class="flex items-center gap-1.5"></div>
+                    </div>
+                </div>
+
+                <!-- Coenzymes / Energy Coupled in This Step -->
+                <div>
+                    <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Coupled Cofactors & Byproducts</h3>
+                    <div id="detail-cofactors" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- Biochemical Mechanism Explanation -->
+                <div class="bg-slate-900/50 rounded-xl p-4 border border-slate-800/70 space-y-2">
+                    <h3 class="text-xs font-mono uppercase tracking-wider text-teal-400">Biochemical Mechanism</h3>
+                    <p id="detail-description" class="text-sm text-slate-300 leading-relaxed"></p>
+                </div>
+
+                <!-- Allosteric Regulation Box -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/25">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 mb-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                            </svg>
+                            <span>Allosteric Activators</span>
+                        </div>
+                        <p id="detail-activators" class="text-xs text-slate-300 font-mono">ADP, NAD⁺, Low Energy Charge</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/25">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-rose-400 mb-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                            <span>Allosteric Inhibitors</span>
+                        </div>
+                        <p id="detail-inhibitors" class="text-xs text-slate-300 font-mono">ATP, NADH, Succinyl-CoA, Citrate</p>
+                    </div>
+                </div>
+
+                <!-- Step Quick-Jump Pills -->
+                <div class="pt-2 border-t border-slate-800">
+                    <div class="text-xs text-slate-400 mb-2 flex justify-between">
+                        <span>Jump to Reaction Step:</span>
+                        <span id="step-progress-label" class="font-mono text-teal-400">1 / 8</span>
+                    </div>
+                    <div id="step-pills-container" class="grid grid-cols-8 gap-1.5"></div>
+                </div>
+            </div>
+
+            <!-- QUIZ MODE PANEL (Hidden by default) -->
+            <div id="quiz-panel" class="hidden glass-panel rounded-2xl p-5 sm:p-6 shadow-2xl border border-amber-500/30 flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-300 font-mono text-xs font-bold">QUIZ CHALLENGE</span>
+                        <span id="quiz-q-counter" class="text-xs font-mono text-slate-400">Question 1 of 6</span>
+                    </div>
+                    <div class="text-xs font-mono text-emerald-400">
+                        Score: <span id="quiz-score">0</span>
+                    </div>
+                </div>
+
+                <p id="quiz-question" class="text-base sm:text-lg font-semibold text-white leading-snug"></p>
+
+                <div id="quiz-options" class="flex flex-col gap-2.5 my-1"></div>
+
+                <div id="quiz-feedback" class="hidden p-3.5 rounded-xl text-xs leading-relaxed"></div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                    <button onclick="toggleQuizMode()" class="text-xs text-slate-400 hover:text-white transition">
+                        ← Return to Step Inspector
+                    </button>
+                    <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition">
+                        Next Question →
+                    </button>
+                </div>
+            </div>
+
+            <!-- OXIDATIVE PHOSPHORYLATION (ETC) ATP CALCULATOR CARD -->
+            <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <span>Total ATP Yield Calculator (Coupled to ETC)</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Includes Electron Transport Chain oxidative phosphorylation equivalents</p>
+                    </div>
+                    <span id="calc-turn-badge" class="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-800 text-teal-300">Per 1 Acetyl-CoA</span>
+                </div>
+
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                        <div class="text-[11px] text-purple-300 font-mono" id="etc-nadh-count">3 NADH</div>
+                        <div class="text-sm sm:text-base font-bold text-white mt-0.5" id="etc-nadh-atp">7.5 ATP</div>
+                        <div class="text-[10px] text-slate-500">× 2.5 ATP each</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                        <div class="text-[11px] text-amber-300 font-mono" id="etc-fadh-count">1 FADH₂</div>
+                        <div class="text-sm sm:text-base font-bold text-white mt-0.5" id="etc-fadh-atp">1.5 ATP</div>
+                        <div class="text-[10px] text-slate-500">× 1.5 ATP each</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                        <div class="text-[11px] text-emerald-300 font-mono" id="etc-gtp-count">1 GTP</div>
+                        <div class="text-sm sm:text-base font-bold text-white mt-0.5" id="etc-gtp-atp">1.0 ATP</div>
+                        <div class="text-[10px] text-slate-500">Substrate-level</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-gradient-to-br from-teal-500/20 to-emerald-500/20 border border-teal-500/40">
+                        <div class="text-[11px] text-teal-300 font-mono font-semibold">NET YIELD</div>
+                        <div class="text-base sm:text-lg font-extrabold text-teal-300 mt-0.5" id="etc-total-atp">10 ATP</div>
+                        <div class="text-[10px] text-teal-200/70">Modern P/O ratio</div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </main>
+
+    <script>
+        /**
+         * Complete Biochemical Dataset for the 8 Steps of the Krebs Cycle
+         * Angles are positioned clockwise starting from Citrate at 25 degrees (top-right).
+         */
+        const KREBS_STEPS = [
+            {
+                step: 1,
+                title: "Citrate Formation (Condensation)",
+                substrate: "Oxaloacetate (4C) + Acetyl-CoA (2C)",
+                substrateFormula: "C₄H₄O₅²⁻ + CH₃CO-CoA",
+                product: "Citrate",
+                productShort: "Citrate",
+                productFormula: "C₆H₅O₇³⁻ (6C Tricarboxylic Acid)",
+                carbons: 6,
+                hasCoA: false,
+                enzyme: "Citrate Synthase",
+                reactionType: "Aldol Claisen Condensation",
+                deltaG: "ΔG°' = -31.5 kJ/mol",
+                reversible: false,
+                angle: 25,
+                byproducts: [
+                    { label: "+ H₂O", type: "input", color: "cyan" },
+                    { label: "CoA-SH Released", type: "output", color: "slate" }
+                ],
+                cumYield: { nadh: 0, fadh2: 0, atp: 0, co2: 0 },
+                description: "Acetyl-CoA (2 carbons) condenses with Oxaloacetate (4 carbons) to form Citryl-CoA, which is immediately hydrolyzed to Citrate (6 carbons) and free CoA-SH. The hydrolysis of the high-energy thioester bond makes this entry step strongly exergonic and irreversible.",
+                activators: "ADP, High [Oxaloacetate], High [Acetyl-CoA]",
+                inhibitors: "ATP, NADH, Succinyl-CoA, Citrate"
+            },
+            {
+                step: 2,
+                title: "Isomerization via cis-Aconitate",
+                substrate: "Citrate (6C)",
+                substrateFormula: "C₆H₅O₇³⁻ (Tertiary Alcohol)",
+                product: "Isocitrate",
+                productShort: "Isocitrate",
+                productFormula: "C₆H₅O₇³⁻ (Secondary Alcohol)",
+                carbons: 6,
+                hasCoA: false,
+                enzyme: "Aconitase",
+                reactionType: "Dehydration / Rehydration",
+                deltaG: "ΔG°' = +6.3 kJ/mol",
+                reversible: true,
+                angle: 70,
+                byproducts: [
+                    { label: "⇌ cis-Aconitate intermediate", type: "neutral", color: "teal" }
+                ],
+                cumYield: { nadh: 0, fadh2: 0, atp: 0, co2: 0 },
+                description: "Citrate contains a tertiary alcohol group that cannot be easily oxidized. Aconitase (an iron-sulfur [4Fe-4S] protein) catalyzes a stereospecific dehydration to cis-Aconitate followed by rehydration to yield Isocitrate, moving the hydroxyl group to a secondary carbon.",
+                activators: "High [Citrate], Rapid consumption of Isocitrate",
+                inhibitors: "Fluoroacetate (forms fluorocitrate), High [Isocitrate]"
+            },
+            {
+                step: 3,
+                title: "First Oxidative Decarboxylation",
+                substrate: "Isocitrate (6C)",
+                substrateFormula: "C₆H₅O₇³⁻ + NAD⁺",
+                product: "α-Ketoglutarate",
+                productShort: "α-Ketoglutarate",
+                productFormula: "C₅H₄O₅²⁻ (5 Carbons)",
+                carbons: 5,
+                hasCoA: false,
+                enzyme: "Isocitrate Dehydrogenase",
+                reactionType: "Oxidative Decarboxylation",
+                deltaG: "ΔG°' = -20.9 kJ/mol",
+                reversible: false,
+                angle: 115,
+                byproducts: [
+                    { label: "+1 NADH + H⁺", type: "nadh", color: "purple" },
+                    { label: "1 CO₂ Released", type: "co2", color: "rose" }
+                ],
+                cumYield: { nadh: 1, fadh2: 0, atp: 0, co2: 1 },
+                description: "Isocitrate is oxidized to an unstable intermediate (Oxalosuccinate) generating the cycle's first NADH, followed by loss of the first carbon as CO₂. This is the primary pacemaker rate-limiting step of the entire Krebs Cycle.",
+                activators: "ADP, Ca²⁺ (muscle contraction signal), NAD⁺",
+                inhibitors: "ATP, NADH"
+            },
+            {
+                step: 4,
+                title: "Second Oxidative Decarboxylation",
+                substrate: "α-Ketoglutarate (5C)",
+                substrateFormula: "C₅H₄O₅²⁻ + CoA-SH + NAD⁺",
+                product: "Succinyl-CoA",
+                productShort: "Succinyl-CoA",
+                productFormula: "C₄H₅O₃-S-CoA (4C Thioester)",
+                carbons: 4,
+                hasCoA: true,
+                enzyme: "α-Ketoglutarate Dehydrogenase",
+                reactionType: "Oxidative Decarboxylation",
+                deltaG: "ΔG°' = -33.5 kJ/mol",
+                reversible: false,
+                angle: 160,
+                byproducts: [
+                    { label: "+1 NADH + H⁺", type: "nadh", color: "purple" },
+                    { label: "1 CO₂ Released", type: "co2", color: "rose" },
+                    { label: "+ CoA-SH", type: "input", color: "amber" }
+                ],
+                cumYield: { nadh: 2, fadh2: 0, atp: 0, co2: 2 },
+                description: "Structurally homologous to Pyruvate Dehydrogenase (requiring cofactors TPP, Lipoate, FAD, NAD⁺, and CoA-SH), this multi-enzyme complex oxidatively decarboxylates α-Ketoglutarate (5C) into high-energy Succinyl-CoA (4C), releasing the second CO₂ and second NADH.",
+                activators: "Ca²⁺, AMP, NAD⁺",
+                inhibitors: "Succinyl-CoA, NADH, ATP"
+            },
+            {
+                step: 5,
+                title: "Substrate-Level Phosphorylation",
+                substrate: "Succinyl-CoA (4C)",
+                substrateFormula: "C₄H₅O₃-S-CoA + GDP + Pᵢ",
+                product: "Succinate",
+                productShort: "Succinate",
+                productFormula: "C₄H₄O₄²⁻ (4C Symmetric)",
+                carbons: 4,
+                hasCoA: false,
+                enzyme: "Succinyl-CoA Synthetase",
+                reactionType: "Substrate-Level Phosphorylation",
+                deltaG: "ΔG°' = -2.9 kJ/mol",
+                reversible: true,
+                angle: 205,
+                byproducts: [
+                    { label: "+1 GTP (→ ATP)", type: "atp", color: "emerald" },
+                    { label: "CoA-SH Released", type: "output", color: "slate" }
+                ],
+                cumYield: { nadh: 2, fadh2: 0, atp: 1, co2: 2 },
+                description: "Cleavage of the high-energy thioester bond of Succinyl-CoA drives the phosphorylation of GDP (or ADP in certain tissues) to form GTP (readily converted to ATP by nucleoside diphosphate kinase). This is the only direct ATP/GTP-forming step in the cycle.",
+                activators: "High [Succinyl-CoA], GDP, Inorganic Phosphate (Pᵢ)",
+                inhibitors: "High [GTP] / [ATP] product feedback"
+            },
+            {
+                step: 6,
+                title: "Dehydrogenation of Succinate",
+                substrate: "Succinate (4C)",
+                substrateFormula: "C₄H₄O₄²⁻ + FAD",
+                product: "Fumarate",
+                productShort: "Fumarate",
+                productFormula: "trans-C₄H₂O₄²⁻ (4C Alkene)",
+                carbons: 4,
+                hasCoA: false,
+                enzyme: "Succinate Dehydrogenase (Complex II)",
+                reactionType: "Stereospecific Oxidation",
+                deltaG: "ΔG°' = 0.0 kJ/mol",
+                reversible: true,
+                angle: 250,
+                byproducts: [
+                    { label: "+1 FADH₂ (Complex II)", type: "fadh2", color: "amber" }
+                ],
+                cumYield: { nadh: 2, fadh2: 1, atp: 1, co2: 2 },
+                description: "Succinate is oxidized to trans-Fumarate. Unlike all other Krebs Cycle enzymes (which are soluble in the matrix), Succinate Dehydrogenase is embedded directly in the inner mitochondrial membrane as Complex II of the Electron Transport Chain, transferring electrons via covalently bound FAD to Ubiquinone (CoQ).",
+                activators: "Succinate, Coenzyme Q, ADP",
+                inhibitors: "Malonate (classic competitive inhibitor), Oxaloacetate"
+            },
+            {
+                step: 7,
+                title: "Stereospecific Hydration",
+                substrate: "Fumarate (4C)",
+                substrateFormula: "C₄H₂O₄²⁻ + H₂O",
+                product: "L-Malate",
+                productShort: "L-Malate",
+                productFormula: "C₄H₄O₅²⁻ (4C Hydroxy Acid)",
+                carbons: 4,
+                hasCoA: false,
+                enzyme: "Fumarase (Fumarate Hydratase)",
+                reactionType: "Trans-Addition Hydration",
+                deltaG: "ΔG°' = -3.8 kJ/mol",
+                reversible: true,
+                angle: 295,
+                byproducts: [
+                    { label: "+ H₂O Added", type: "input", color: "cyan" }
+                ],
+                cumYield: { nadh: 2, fadh2: 1, atp: 1, co2: 2 },
+                description: "Fumarase catalyzes the stereospecific trans-addition of a water molecule (H⁺ and OH⁻) across the double bond of Fumarate to produce exclusively the L-stereoisomer of Malate.",
+                activators: "High [Fumarate]",
+                inhibitors: "High [L-Malate], ATP"
+            },
+            {
+                step: 8,
+                title: "Regeneration of Oxaloacetate",
+                substrate: "L-Malate (4C)",
+                substrateFormula: "C₄H₄O₅²⁻ + NAD⁺",
+                product: "Oxaloacetate",
+                productShort: "Oxaloacetate",
+                productFormula: "C₄H₂O₅²⁻ (4C Keto Acid)",
+                carbons: 4,
+                hasCoA: false,
+                enzyme: "Malate Dehydrogenase",
+                reactionType: "Alcohol Oxidation",
+                deltaG: "ΔG°' = +29.7 kJ/mol",
+                reversible: true,
+                angle: 340,
+                byproducts: [
+                    { label: "+1 NADH + H⁺", type: "nadh", color: "purple" }
+                ],
+                cumYield: { nadh: 3, fadh2: 1, atp: 1, co2: 2 },
+                description: "L-Malate is oxidized to regenerate Oxaloacetate and produce the third NADH. Although the standard free energy (ΔG°' = +29.7 kJ/mol) is strongly endergonic, the reaction is pulled forward under physiological conditions because Citrate Synthase (Step 1) continuously keeps mitochondrial [Oxaloacetate] extremely low.",
+                activators: "NAD⁺, Rapid removal of Oxaloacetate in Step 1",
+                inhibitors: "NADH (high NADH/NAD⁺ ratio)"
+            }
+        ];
+
+        const QUIZ_QUESTIONS = [
+            {
+                question: "Which enzyme of the Krebs Cycle is uniquely embedded in the inner mitochondrial membrane as Complex II of the Electron Transport Chain?",
+                options: [
+                    "Citrate Synthase",
+                    "Isocitrate Dehydrogenase",
+                    "Succinate Dehydrogenase",
+                    "Malate Dehydrogenase"
+                ],
+                correct: 2,
+                explanation: "Succinate Dehydrogenase (Step 6) is the only membrane-bound enzyme in the citric acid cycle, functioning directly as Complex II of the respiratory chain and reducing FAD to FADH₂."
+            },
+            {
+                question: "How many molecules of NADH, FADH₂, and GTP/ATP are produced in ONE complete turn of the Krebs Cycle (from 1 Acetyl-CoA)?",
+                options: [
+                    "3 NADH, 1 FADH₂, 1 GTP",
+                    "6 NADH, 2 FADH₂, 2 GTP",
+                    "2 NADH, 2 FADH₂, 1 GTP",
+                    "4 NADH, 1 FADH₂, 2 GTP"
+                ],
+                correct: 0,
+                explanation: "A single turn oxidizes one 2-carbon Acetyl group into 2 CO₂, generating 3 NADH (Steps 3, 4, 8), 1 FADH₂ (Step 6), and 1 GTP/ATP (Step 5)."
+            },
+            {
+                question: "Why does the oxidation of L-Malate to Oxaloacetate (Step 8) proceed forward in cells despite having a highly positive ΔG°' (+29.7 kJ/mol)?",
+                options: [
+                    "ATP hydrolysis directly powers Malate Dehydrogenase",
+                    "Oxaloacetate is rapidly consumed by the exergonic Citrate Synthase reaction (Step 1)",
+                    "CO₂ release makes the reaction irreversible",
+                    "FADH₂ donates electrons to push the equilibrium"
+                ],
+                correct: 1,
+                explanation: "By Le Chatelier's principle, Step 1 (Citrate Synthase, ΔG°' = -31.5 kJ/mol) keeps intramitochondrial Oxaloacetate concentrations below micromolar levels, making the actual physiological ΔG negative."
+            },
+            {
+                question: "Which step performs substrate-level phosphorylation to directly generate GTP (or ATP)?",
+                options: [
+                    "Citrate → Isocitrate (Aconitase)",
+                    "Isocitrate → α-Ketoglutarate (Isocitrate Dehydrogenase)",
+                    "Succinyl-CoA → Succinate (Succinyl-CoA Synthetase)",
+                    "Fumarate → L-Malate (Fumarase)"
+                ],
+                correct: 2,
+                explanation: "In Step 5, Succinyl-CoA Synthetase couples the cleavage of the high-energy thioester bond of Succinyl-CoA to the synthesis of GTP (or ATP)."
+            },
+            {
+                question: "Which two steps release Carbon Dioxide (CO₂) via oxidative decarboxylation?",
+                options: [
+                    "Steps 1 and 2",
+                    "Steps 3 and 4 (Isocitrate DH & α-Ketoglutarate DH)",
+                    "Steps 5 and 6",
+                    "Steps 7 and 8"
+                ],
+                correct: 1,
+                explanation: "Isocitrate (6C) loses a carbon in Step 3 to become α-Ketoglutarate (5C), which loses another carbon in Step 4 to form Succinyl-CoA (4C)."
+            },
+            {
+                question: "Which molecule is a classic competitive inhibitor of Succinate Dehydrogenase because it structurally mimics Succinate (with 3 carbons instead of 4)?",
+                options: [
+                    "Malonate",
+                    "Pyruvate",
+                    "Acetyl-CoA",
+                    "Lactate"
+                ],
+                correct: 0,
+                explanation: "Hans Krebs famously used Malonate (a 3-carbon dicarboxylate) to competitively block Succinate Dehydrogenase and prove the cyclic nature of the pathway."
+            }
+        ];
+
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 2400;
+        let turnMultiplier = 1; // 1 for 1 Acetyl-CoA, 2 for 1 Glucose (2 Acetyl-CoA)
+        let isQuizMode = false;
+        let currentQuizIndex = 0;
+        let quizScore = 0;
+
+        const CENTER_X = 350;
+        const CENTER_Y = 370;
+        const RADIUS = 215;
+
+        // Convert polar angle (0 deg at 12 o'clock, clockwise) to SVG Cartesian coordinates
+        function polarToCartesian(cx, cy, r, angleInDegrees) {
+            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+            return {
+                x: cx + (r * Math.cos(angleInRadians)),
+                y: cy + (r * Math.sin(angleInRadians))
+            };
+        }
+
+        // Create an SVG circular arc path between startAngle and endAngle
+        function describeArc(cx, cy, r, startAngle, endAngle) {
+            let diff = endAngle - startAngle;
+            if (diff < 0) diff += 360;
+            const start = polarToCartesian(cx, cy, r, startAngle);
+            const end = polarToCartesian(cx, cy, r, endAngle);
+            const largeArcFlag = diff <= 180 ? "0" : "1";
+            return [
+                "M", start.x, start.y,
+                "A", r, r, 0, largeArcFlag, 1, end.x, end.y
+            ].join(" ");
+        }
+
+        function renderCycleSVG() {
+            const arcsLayer = document.getElementById('svg-arcs-layer');
+            const byproductsLayer = document.getElementById('svg-byproducts-layer');
+            const nodesLayer = document.getElementById('svg-nodes-layer');
+
+            arcsLayer.innerHTML = '';
+            byproductsLayer.innerHTML = '';
+            nodesLayer.innerHTML = '';
+
+            KREBS_STEPS.forEach((stepData, idx) => {
+                // Previous node is the substrate node; current stepData is the product node
+                const prevIdx = (idx - 1 + KREBS_STEPS.length) % KREBS_STEPS.length;
+                const startAngle = KREBS_STEPS[prevIdx].angle + 12;
+                let endAngle = stepData.angle - 12;
+
+                const isActive = idx === currentStepIndex;
+
+                // 1. Draw Reaction Arc connecting prev metabolite to this step's product
+                const arcPath = describeArc(CENTER_X, CENTER_Y, RADIUS, startAngle, endAngle);
+                const arcGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                arcGroup.setAttribute("class", "cursor-pointer transition-all");
+                arcGroup.onclick = () => selectStep(idx);
+
+                const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                pathEl.setAttribute("d", arcPath);
+                pathEl.setAttribute("fill", "none");
+                pathEl.setAttribute("stroke", isActive ? "#2DD4BF" : "#475569");
+                pathEl.setAttribute("stroke-width", isActive ? "5" : "2.5");
+                pathEl.setAttribute("marker-end", isActive ? "url(#arrow-active)" : "url(#arrow-muted)");
+                if (isActive) {
+                    pathEl.setAttribute("class", "node-pulse");
+                }
+                arcGroup.appendChild(pathEl);
+
+                // Step number pill at midpoint of the arc
+                let midAngle = KREBS_STEPS[prevIdx].angle + 22.5;
+                if (midAngle >= 360) midAngle -= 360;
+                const midPos = polarToCartesian(CENTER_X, CENTER_Y, RADIUS - 36, midAngle);
+
+                const stepCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                stepCircle.setAttribute("cx", midPos.x);
+                stepCircle.setAttribute("cy", midPos.y);
+                stepCircle.setAttribute("r", isActive ? "13" : "10");
+                stepCircle.setAttribute("fill", isActive ? "#14B8A6" : "#1E293B");
+                stepCircle.setAttribute("stroke", isActive ? "#99F6E4" : "#475569");
+                stepCircle.setAttribute("stroke-width", "1.5");
+                arcGroup.appendChild(stepCircle);
+
+                const stepNumText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                stepNumText.setAttribute("x", midPos.x);
+                stepNumText.setAttribute("y", midPos.y + 3.5);
+                stepNumText.setAttribute("text-anchor", "middle");
+                stepNumText.setAttribute("fill", isActive ? "#042F2E" : "#94A3B8");
+                stepNumText.setAttribute("font-size", "10");
+                stepNumText.setAttribute("font-weight", "700");
+                stepNumText.setAttribute("font-family", "JetBrains Mono");
+                stepNumText.textContent = stepData.step;
+                arcGroup.appendChild(stepNumText);
+
+                arcsLayer.appendChild(arcGroup);
+
+                // 2. Draw Outer Byproduct Callout Tag at midAngle (for NADH, FADH2, GTP, CO2)
+                const mainByproduct = stepData.byproducts[0];
+                if (mainByproduct && idx !== 0) {
+                    const outerPos = polarToCartesian(CENTER_X, CENTER_Y, RADIUS + 64, midAngle);
+                    const innerAnchor = polarToCartesian(CENTER_X, CENTER_Y, RADIUS + 14, midAngle);
+
+                    const bypGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                    bypGroup.setAttribute("class", "cursor-pointer byproduct-badge");
+                    bypGroup.onclick = () => selectStep(idx);
+
+                    // Color map
+                    const colorMap = {
+                        purple: { stroke: "#A855F7", bg: "#2E1065", text: "#E9D5FF" },
+                        amber:  { stroke: "#F59E0B", bg: "#451A03", text: "#FDE68A" },
+                        emerald:{ stroke: "#10B981", bg: "#064E3B", text: "#A7F3D0" },
+                        rose:   { stroke: "#F43F5E", bg: "#4C0519", text: "#FECDD3" },
+                        cyan:   { stroke: "#06B6D4", bg: "#083344", text: "#A5F3FC" },
+                        teal:   { stroke: "#14B8A6", bg: "#042F2E", text: "#99F6E4" }
+                    };
+                    const c = colorMap[mainByproduct.color] || colorMap.teal;
+
+                    // Connector line
+                    const connLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    connLine.setAttribute("x1", innerAnchor.x);
+                    connLine.setAttribute("y1", innerAnchor.y);
+                    connLine.setAttribute("x2", outerPos.x);
+                    connLine.setAttribute("y2", outerPos.y);
+                    connLine.setAttribute("stroke", c.stroke);
+                    connLine.setAttribute("stroke-width", isActive ? "2" : "1.2");
+                    connLine.setAttribute("stroke-dasharray", "3 2");
+                    bypGroup.appendChild(connLine);
+
+                    // Badge label text
+                    let badgeLabel = mainByproduct.label
+                        .replace(' intermediate', '')
+                        .replace(' (Complex II)', '')
+                        .replace(' Released', '');
+                    if (stepData.byproducts.length > 1 && stepData.byproducts[1].type === 'co2') {
+                        badgeLabel = `${ turnMultiplier * 1 } NADH, ${ turnMultiplier * 1 } CO₂`;
+                    } else if (mainByproduct.type === 'nadh') {
+                        badgeLabel = `+${ turnMultiplier * 1 } NADH`;
+                    } else if (mainByproduct.type === 'fadh2') {
+                        badgeLabel = `+${ turnMultiplier * 1 } FADH₂`;
+                    } else if (mainByproduct.type === 'atp') {
+                        badgeLabel = `+${ turnMultiplier * 1 } GTP/ATP`;
+                    }
+
+                    const badgeW = Math.max(76, badgeLabel.length * 6.5);
+                    const badgeRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    badgeRect.setAttribute("x", outerPos.x - badgeW / 2);
+                    badgeRect.setAttribute("y", outerPos.y - 11);
+                    badgeRect.setAttribute("width", badgeW);
+                    badgeRect.setAttribute("height", 22);
+                    badgeRect.setAttribute("rx", "6");
+                    badgeRect.setAttribute("fill", c.bg);
+                    badgeRect.setAttribute("stroke", c.stroke);
+                    badgeRect.setAttribute("stroke-width", isActive ? "2" : "1");
+                    bypGroup.appendChild(badgeRect);
+
+                    const badgeTxt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    badgeTxt.setAttribute("x", outerPos.x);
+                    badgeTxt.setAttribute("y", outerPos.y + 3.5);
+                    badgeTxt.setAttribute("text-anchor", "middle");
+                    badgeTxt.setAttribute("fill", c.text);
+                    badgeTxt.setAttribute("font-size", "9.5");
+                    badgeTxt.setAttribute("font-weight", "600");
+                    badgeTxt.setAttribute("font-family", "JetBrains Mono");
+                    badgeTxt.textContent = badgeLabel;
+                    bypGroup.appendChild(badgeTxt);
+
+                    byproductsLayer.appendChild(bypGroup);
+                }
+
+                // 3. Draw Product Metabolite Node at stepData.angle
+                const nodePos = polarToCartesian(CENTER_X, CENTER_Y, RADIUS, stepData.angle);
+                const nodeGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                nodeGroup.setAttribute("class", "cursor-pointer");
+                nodeGroup.onclick = () => selectStep(idx);
+
+                const boxWidth = 114;
+                const boxHeight = 42;
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", nodePos.x - boxWidth / 2);
+                rect.setAttribute("y", nodePos.y - boxHeight / 2);
+                rect.setAttribute("width", boxWidth);
+                rect.setAttribute("height", boxHeight);
+                rect.setAttribute("rx", "12");
+                rect.setAttribute("fill", isActive ? "#042F2E" : "#0F172A");
+                rect.setAttribute("stroke", isActive ? "#2DD4BF" : "#334155");
+                rect.setAttribute("stroke-width", isActive ? "2.8" : "1.6");
+                if (isActive) {
+                    rect.setAttribute("class", "node-pulse");
+                }
+                nodeGroup.appendChild(rect);
+
+                // Product Name
+                const titleTxt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                titleTxt.setAttribute("x", nodePos.x);
+                titleTxt.setAttribute("y", nodePos.y - 3);
+                titleTxt.setAttribute("text-anchor", "middle");
+                titleTxt.setAttribute("fill", isActive ? "#5EEAD4" : "#F1F5F9");
+                titleTxt.setAttribute("font-size", "11");
+                titleTxt.setAttribute("font-weight", "700");
+                titleTxt.textContent = stepData.productShort;
+                nodeGroup.appendChild(titleTxt);
+
+                // Carbon count sublabel
+                const carbonTxt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                carbonTxt.setAttribute("x", nodePos.x);
+                carbonTxt.setAttribute("y", nodePos.y + 12);
+                carbonTxt.setAttribute("text-anchor", "middle");
+                carbonTxt.setAttribute("fill", isActive ? "#99F6E4" : "#64748B");
+                carbonTxt.setAttribute("font-size", "9.5");
+                carbonTxt.setAttribute("font-family", "JetBrains Mono");
+                carbonTxt.textContent = `${stepData.carbons} Carbons (${stepData.carbons}C)`;
+                nodeGroup.appendChild(carbonTxt);
+
+                nodesLayer.appendChild(nodeGroup);
+            });
+        }
+
+        function updateUI() {
+            const stepData = KREBS_STEPS[currentStepIndex];
+
+            // 1. Update SVG Diagram & Center Hub
+            renderCycleSVG();
+            document.getElementById('hub-step-label').textContent = `STEP ${stepData.step} OF 8`;
+            document.getElementById('hub-enzyme').textContent = stepData.enzyme.replace(' (Complex II)', '');
+            document.getElementById('hub-reaction-type').textContent = stepData.reactionType;
+            document.getElementById('hub-atp-equiv').textContent = stepData.deltaG;
+
+            // 2. Update Top Cumulative Scoreboard (scaled by turnMultiplier)
+            const maxNadh = 3 * turnMultiplier;
+            const maxFadh2 = 1 * turnMultiplier;
+            const maxAtp = 1 * turnMultiplier;
+            const maxCo2 = 2 * turnMultiplier;
+
+            document.getElementById('score-nadh').textContent = `${stepData.cumYield.nadh * turnMultiplier}/${maxNadh}`;
+            document.getElementById('score-fadh2').textContent = `${stepData.cumYield.fadh2 * turnMultiplier}/${maxFadh2}`;
+            document.getElementById('score-atp').textContent = `${stepData.cumYield.atp * turnMultiplier}/${maxAtp}`;
+            document.getElementById('score-co2').textContent = `${stepData.cumYield.co2 * turnMultiplier}/${maxCo2}`;
+
+            // 3. Update Right-Side Step Inspector
+            document.getElementById('detail-step-badge').textContent = `Step ${stepData.step} of 8 • ${stepData.reactionType}`;
+            document.getElementById('detail-title').textContent = stepData.title;
+
+            const revBadge = document.getElementById('detail-reversible-badge');
+            if (stepData.reversible) {
+                revBadge.textContent = "Reversible (⇌)";
+                revBadge.className = "px-2.5 py-1 rounded-lg bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-mono";
+            } else {
+                revBadge.textContent = "Irreversible (→)";
+                revBadge.className = "px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-mono";
+            }
+
+            document.getElementById('detail-enzyme-pill').textContent = `Enzyme: ${stepData.enzyme}`;
+            document.getElementById('detail-reactant').textContent = stepData.substrate;
+            document.getElementById('detail-reactant-formula').textContent = stepData.substrateFormula;
+            document.getElementById('detail-product').textContent = stepData.product;
+            document.getElementById('detail-product-formula').textContent = stepData.productFormula;
+            document.getElementById('detail-description').textContent = stepData.description;
+            document.getElementById('detail-activators').textContent = stepData.activators;
+            document.getElementById('detail-inhibitors').textContent = stepData.inhibitors;
+            document.getElementById('step-progress-label').textContent = `${stepData.step} / 8`;
+
+            // 4. Render 3D-style Carbon Atom Skeleton Spheres
+            const carbonContainer = document.getElementById('carbon-tracker-balls');
+            carbonContainer.innerHTML = '';
+            for (let i = 0; i < stepData.carbons; i++) {
+                const ball = document.createElement('div');
+                ball.className = "w-6 h-6 rounded-full carbon-sphere flex items-center justify-center text-[10px] font-mono font-bold text-white";
+                ball.textContent = "C";
+                carbonContainer.appendChild(ball);
+            }
+            if (stepData.hasCoA) {
+                const coa = document.createElement('div');
+                coa.className = "px-2 h-6 rounded-full coa-sphere flex items-center justify-center text-[10px] font-mono font-bold text-slate-950 ml-1";
+                coa.textContent = "S-CoA";
+                carbonContainer.appendChild(coa);
+            }
+
+            // 5. Render Cofactor Pills
+            const cofactorsContainer = document.getElementById('detail-cofactors');
+            cofactorsContainer.innerHTML = '';
+            const pillStyles = {
+                purple: "bg-purple-500/15 border-purple-500/40 text-purple-300",
+                amber: "bg-amber-500/15 border-amber-500/40 text-amber-300",
+                emerald: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300",
+                rose: "bg-rose-500/15 border-rose-500/40 text-rose-300",
+                cyan: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300",
+                teal: "bg-teal-500/15 border-teal-500/40 text-teal-300",
+                slate: "bg-slate-800 border-slate-700 text-slate-300"
+            };
+            stepData.byproducts.forEach(byp => {
+                const span = document.createElement('span');
+                const st = pillStyles[byp.color] || pillStyles.teal;
+                span.className = `px-3 py-1.5 rounded-xl border text-xs font-mono font-semibold ${st}`;
+                span.textContent = byp.label;
+                cofactorsContainer.appendChild(span);
+            });
+
+            // 6. Render Step Quick-Jump Buttons
+            const pillsContainer = document.getElementById('step-pills-container');
+            pillsContainer.innerHTML = '';
+            KREBS_STEPS.forEach((s, idx) => {
+                const btn = document.createElement('button');
+                const active = idx === currentStepIndex;
+                btn.className = active
+                    ? "py-1.5 rounded-lg font-mono text-xs font-bold bg-teal-500 text-slate-950 shadow"
+                    : "py-1.5 rounded-lg font-mono text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 transition";
+                btn.textContent = s.step;
+                btn.onclick = () => selectStep(idx);
+                pillsContainer.appendChild(btn);
+            });
+
+            // 7. Update ETC ATP Calculator Card
+            document.getElementById('calc-turn-badge').textContent = turnMultiplier === 1 ? "Per 1 Acetyl-CoA (1 Turn)" : "Per 1 Glucose (2 Turns)";
+            document.getElementById('etc-nadh-count').textContent = `${3 * turnMultiplier} NADH`;
+            document.getElementById('etc-nadh-atp').textContent = `${(7.5 * turnMultiplier).toFixed(1).replace('.0', '')} ATP`;
+            document.getElementById('etc-fadh-count').textContent = `${1 * turnMultiplier} FADH₂`;
+            document.getElementById('etc-fadh-atp').textContent = `${(1.5 * turnMultiplier).toFixed(1).replace('.0', '')} ATP`;
+            document.getElementById('etc-gtp-count').textContent = `${1 * turnMultiplier} GTP`;
+            document.getElementById('etc-gtp-atp').textContent = `${1 * turnMultiplier} ATP`;
+            document.getElementById('etc-total-atp').textContent = `${10 * turnMultiplier} ATP`;
+        }
+
+        function selectStep(index) {
+            currentStepIndex = index;
+            updateUI();
+        }
+
+        function nextStep() {
+            currentStepIndex = (currentStepIndex + 1) % KREBS_STEPS.length;
+            updateUI();
+        }
+
+        function prevStep() {
+            currentStepIndex = (currentStepIndex - 1 + KREBS_STEPS.length) % KREBS_STEPS.length;
+            updateUI();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const playText = document.getElementById('play-text');
+            const playIcon = document.getElementById('play-icon');
+            const playBtn = document.getElementById('play-pause-btn');
+
+            if (isPlaying) {
+                playText.textContent = "Pause Cycle";
+                playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+                playBtn.classList.replace('bg-teal-500', 'bg-amber-500');
+                playBtn.classList.replace('hover:bg-teal-400', 'hover:bg-amber-400');
+                playInterval = setInterval(nextStep, playSpeed);
+            } else {
+                playText.textContent = "Auto-Play Cycle";
+                playIcon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+                playBtn.classList.replace('bg-amber-500', 'bg-teal-500');
+                playBtn.classList.replace('hover:bg-amber-400', 'hover:bg-teal-400');
+                clearInterval(playInterval);
+            }
+        }
+
+        function updateSpeed(newSpeed) {
+            playSpeed = parseInt(newSpeed, 10);
+            if (isPlaying) {
+                clearInterval(playInterval);
+                playInterval = setInterval(nextStep, playSpeed);
+            }
+        }
+
+        function setMultiplier(mult) {
+            turnMultiplier = mult;
+            const btn1x = document.getElementById('btn-1x');
+            const btn2x = document.getElementById('btn-2x');
+            if (mult === 1) {
+                btn1x.className = "px-2.5 py-1.5 rounded-lg font-medium transition-all bg-teal-500 text-slate-950 shadow";
+                btn2x.className = "px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white";
+            } else {
+                btn2x.className = "px-2.5 py-1.5 rounded-lg font-medium transition-all bg-teal-500 text-slate-950 shadow";
+                btn1x.className = "px-2.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white";
+            }
+            updateUI();
+        }
+
+        // Quiz Mode Logic
+        function toggleQuizMode() {
+            isQuizMode = !isQuizMode;
+            const inspector = document.getElementById('inspector-panel');
+            const quizPanel = document.getElementById('quiz-panel');
+            const quizBtn = document.getElementById('quiz-mode-btn');
+
+            if (isQuizMode) {
+                inspector.classList.add('hidden');
+                quizPanel.classList.remove('hidden');
+                quizPanel.classList.add('flex');
+                quizBtn.classList.replace('bg-amber-500/10', 'bg-amber-500');
+                quizBtn.classList.replace('text-amber-300', 'text-slate-950');
+                renderQuizQuestion();
+            } else {
+                inspector.classList.remove('hidden');
+                quizPanel.classList.add('hidden');
+                quizPanel.classList.remove('flex');
+                quizBtn.classList.replace('bg-amber-500', 'bg-amber-500/10');
+                quizBtn.classList.replace('text-slate-950', 'text-amber-300');
+            }
+        }
+
+        function renderQuizQuestion() {
+            const q = QUIZ_QUESTIONS[currentQuizIndex];
+            document.getElementById('quiz-q-counter').textContent = `Question ${currentQuizIndex + 1} of ${QUIZ_QUESTIONS.length}`;
+            document.getElementById('quiz-question').textContent = q.question;
+
+            const optionsEl = document.getElementById('quiz-options');
+            optionsEl.innerHTML = '';
+
+            const feedbackEl = document.getElementById('quiz-feedback');
+            feedbackEl.className = "hidden p-3.5 rounded-xl text-xs leading-relaxed";
+
+            q.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left px-4 py-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-sm text-slate-200 transition flex items-center justify-between";
+                btn.innerHTML = `<span>${optText}</span><span class="font-mono text-xs text-slate-500">${String.fromCharCode(65 + idx)}</span>`;
+                btn.onclick = () => checkQuizAnswer(idx, btn);
+                optionsEl.appendChild(btn);
+            });
+        }
+
+        function checkQuizAnswer(selectedIndex, clickedBtn) {
+            const q = QUIZ_QUESTIONS[currentQuizIndex];
+            const optionsEl = document.getElementById('quiz-options');
+            const buttons = optionsEl.querySelectorAll('button');
+
+            buttons.forEach((b, idx) => {
+                b.disabled = true;
+                if (idx === q.correct) {
+                    b.className = "w-full text-left px-4 py-3 rounded-xl bg-emerald-500/20 border border-emerald-500 text-sm text-emerald-200 font-semibold flex items-center justify-between";
+                } else if (idx === selectedIndex && selectedIndex !== q.correct) {
+                    b.className = "w-full text-left px-4 py-3 rounded-xl bg-rose-500/20 border border-rose-500 text-sm text-rose-200 flex items-center justify-between";
+                } else {
+                    b.classList.add('opacity-50');
+                }
+            });
+
+            const feedbackEl = document.getElementById('quiz-feedback');
+            feedbackEl.classList.remove('hidden');
+
+            if (selectedIndex === q.correct) {
+                quizScore++;
+                document.getElementById('quiz-score').textContent = quizScore;
+                feedbackEl.className = "p-3.5 rounded-xl text-xs leading-relaxed bg-emerald-950/60 border border-emerald-500/40 text-emerald-200";
+                feedbackEl.innerHTML = `<strong class="text-emerald-400">Correct!</strong> ${q.explanation}`;
+            } else {
+                feedbackEl.className = "p-3.5 rounded-xl text-xs leading-relaxed bg-rose-950/60 border border-rose-500/40 text-rose-200";
+                feedbackEl.innerHTML = `<strong class="text-rose-400">Not quite.</strong> ${q.explanation}`;
+            }
+        }
+
+        function nextQuizQuestion() {
+            currentQuizIndex = (currentQuizIndex + 1) % QUIZ_QUESTIONS.length;
+            renderQuizQuestion();
+        }
+
+        // Keyboard Arrow Support
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                nextStep();
+            } else if (e.key === 'ArrowLeft') {
+                prevStep();
+            } else if (e.key === ' ' && e.target === document.body) {
+                e.preventDefault();
+                togglePlay();
+            }
+        });
+
+        // Initialize on Window Load
+        window.onload = function() {
+            updateUI();
+        };
+    </script>
+</body>
+</html>
